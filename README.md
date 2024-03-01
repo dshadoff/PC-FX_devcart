@@ -38,34 +38,34 @@ it to work in the 400MHz range (of cource, USB and Flash access break down somew
 
 ### GPIOs in USE
 
-GPIO0 = D0
-GPIO1 = D1
-GPIO2 = D2
-GPIO3 = D3
-GPIO4 = D4
-GPIO5 = D5
-GPIO6 = D6
-GPIO7 = D7
-
-GPIO8 = A0
-GPIO9 = A1
-GPIO10 = A2
-GPIO11 = A3
-GPIO12 = A4
-GPIO13 = A5
-GPIO14 = A6
-GPIO15 = A7
-GPIO16 = A8
-GPIO17 = A9
-GPIO18 = A10
-GPIO19 = A11
-GPIO20 = A12
-GPIO21 = A13
-GPIO22 = A14
-GPIO23 = A15
-GPIO24 = A16
-GPIO25 = A17
-
-GPIO26 = /CE
-GPIO27 = /OE
-GPIO28 = /WE
+| GPIO | Signal |
+|------|--------|
+| GPIO0 | D0 |
+| GPIO1 | D1 |
+| GPIO2 | D2 |
+| GPIO3 | D3 |
+| GPIO4 | D4 |
+| GPIO5 | D5 |
+| GPIO6 | D6 |
+| GPIO7 | D7 |
+| GPIO8 | A0 |
+| GPIO9 | A1 |
+| GPIO10 | A2 |
+| GPIO11 | A3 |
+| GPIO12 | A4 |
+| GPIO13 | A5 |
+| GPIO14 | A6 |
+| GPIO15 | A7 |
+| GPIO16 | A8 |
+| GPIO17 | A9 |
+| GPIO18 | A10 |
+| GPIO19 | A11 |
+| GPIO20 | A12 |
+| GPIO21 | A13 |
+| GPIO22 | A14 |
+| GPIO23 | A15 |
+| GPIO24 | A16 |
+| GPIO25 | A17 |
+| GPIO26 | /CE |
+| GPIO27 | /OE |
+| GPIO28 | /WE |
