@@ -13,7 +13,7 @@
 
 // These "extern inline" definitions are strong hints to
 // actually inline these functions (which would otherwise
-// be left up to the compiler to decde)
+// be left up to the compiler to decide)
 //
 extern inline uint32_t gpio_get_all(void) __attribute__((always_inline));
 extern inline void gpio_put_masked(uint32_t mask, uint32_t value) __attribute__((always_inline));
@@ -43,14 +43,15 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 
 
 
-#define GPIO_TESTSIZE   // use GPIO_FULLSIZE when all GPIOs are available and connected
+// #define GPIO_TESTSIZE   // use GPIO_FULLSIZE when all GPIOs are available and connected
+#define GPIO_FULLSIZE
 
 #ifdef GPIO_FULLSIZE
 
 #define ARRAY_SIZE        131072
 #define GPIO_MASK_ADDR    0x03FFFF00 // ultimately, 128KB + port space
 #define GPIO_ADDR_THRESH  0x00020000 // ultimately, port space threshold
-#define GPIO_PORT_DATA    0x00020000
+#define GPIO_PORT_DATA    0x00020002
 #define GPIO_PORT_CONTROL 0x00020001
 
 #else                   // else, these are the TESTSIZE variables
@@ -58,7 +59,7 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define ARRAY_SIZE        32768
 #define GPIO_MASK_ADDR    0x007FFF00 // currently, 16KB + port space
 #define GPIO_ADDR_THRESH  0x00004000 // currently, port space threshold
-#define GPIO_PORT_DATA    0x00004000
+#define GPIO_PORT_DATA    0x00004002
 #define GPIO_PORT_CONTROL 0x00004001
 
 #endif
@@ -67,12 +68,18 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 
 #define GPIO_MASK_DATA    0x000000FF     // bottom GPIOs (GPIO0-7) used for data
 
-#define VALUE_INV_ADDR    0xAA           // 'floating' lines. Should be 0xFF, but 0xAA during test.
+#define VALUE_INV_ADDR    0xFF           // 'floating' lines. Should be 0xFF, but 0xAA during test.
 
 
-// PC-FX based bits:
+// PC-FX control port flag bits:
 #define  FIFO_CTRL_DO_NOT_WRITE  0x80    // bit 7 = HIGH when queue full (i.e. do not write)
 #define  FIFO_CTRL_DO_NOT_READ   0x40    // bit 6 = HIGH when queue empty (i.e. do not read)
+
+// PC-FX Code Boot particulars:
+//
+#define CODE_BASE_ADDR       0x0400
+#define FX_EXECUTION_ADDR    0x8000
+
 
 // Memory array variables:
 //
@@ -96,6 +103,11 @@ volatile int      to_pcfx_head = 0;   // head points at location to write next d
 volatile uint8_t  control  = FIFO_CTRL_DO_NOT_READ; // flags to tell PCFX whether not to read/write
 volatile uint8_t  dataport = VALUE_INV_ADDR;        // pre-fetched data for fifo_to_pcfx[to_pcfx_tail]
 
+// Maybe making these into 'int' type makes them faster ?
+//
+//volatile int  control  = FIFO_CTRL_DO_NOT_READ; // flags to tell PCFX whether not to read/write
+//volatile int  dataport = VALUE_INV_ADDR;        // pre-fetched data for fifo_to_pcfx[to_pcfx_tail]
+
 // debug stuff commented out
 //
 //volatile int      writes_to_port = 0;
@@ -108,19 +120,35 @@ volatile uint8_t  dataport = VALUE_INV_ADDR;        // pre-fetched data for fifo
 // default format for a (formatted and empty) 128KB memory card
 //
 uint8_t formatted_bmp_00[] = {
-0x24, 0x8A, 0xDF, 0x50, 0x43, 0x46, 0x58, 0x43,  0x61, 0x72, 0x64, 0x80, 0x00, 0x01, 0x01, 0x00,
-0x01, 0xFC, 0x00, 0x00, 0x04, 0xF9, 0x0C, 0x00,  0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
+        0x24, 0x8A, 0xDF, 0x50,  'P',  'C',  'F',  'X',   'C',  'a',  'r',  'd', 0x00, 0x01, 0x01, 0x00,
+        0x01, 0xFC, 0x00, 0x00, 0x04, 0xF9, 0x0C, 0x00,  0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 uint8_t formatted_bmp_80[] = {
-0xF9, 0xFF, 0xFF
+        0xF9, 0xFF, 0xFF
 };
 
 
-uint8_t  cmd_dump    = '?';   // dump 256 bytes of hex
-uint8_t  cmd_dumpall = '!';   // dump 16384+16 bytes of hex
-uint8_t  cmd_getfifo = '/';   // read FIFO
+// Next line is only used for booting from Cart:
+uint8_t boot_bmp_20[] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,   'P',  'C',  'F',  'X',  'B',  'o',  'o',  't'
 
+        // Next 16 bytes (at offset 0x0030) are 4-byte words of:
+        //    source offset    (0x0400)
+        //    RAM Destination  (0x8000)
+        //    Transfer Size    (variable)
+        //    Transfer Address (0x8000)
+};
+
+
+
+#define  CMD_DUMP      '?'    // dump 256 bytes of hex
+#define  CMD_DUMPALL   '!'    // dump 16384+16 bytes of hex
+#define  CMD_GETFIFO   '/'    // read FIFO
+
+#define  CMD_BOOT      'B'    // Boot program (B is followed by 4 bytes size, then program)
+#define  CMD_WRITE128K 'W'    // write all 128KB of memory (128KB of data follows)
+#define  CMD_READ128K  'R'    // read all 128KB of memory (128KB of data is returned)
 
 
 
@@ -153,7 +181,7 @@ uint8_t data;
 
       if (to_pcfx_tail == to_pcfx_head)   // did we drain the FIFO completely ?
       {                                   // pre-setup next values
-         dataport = 0xAA;
+         dataport = VALUE_INV_ADDR;
          control |= FIFO_CTRL_DO_NOT_READ;
       } else {
          dataport = fifo_to_pcfx[to_pcfx_tail];
@@ -217,7 +245,6 @@ uint32_t bus_address;
 
     while (1)
     {
-
        while (!gpio_get(CE_PIN))
        {
           if (!gpio_get(OE_PIN))   // bus reads from memory
@@ -254,8 +281,12 @@ uint32_t bus_address;
           {
              bus_address = ((gpio_get_all() & GPIO_MASK_ADDR) >> GPIO_ADDR_SHIFT);
 
+             // Read again, as data is not guaranteed to be correct until
+             // slightly after the /WE pin goes low.
+             //
              indata = (gpio_get_all() & GPIO_MASK_DATA);
 
+// debug logging
 //             write_addr[write_addr_index] = bus_address;
 //             write_addr_index = write_addr_index + 1;
 
@@ -282,6 +313,7 @@ uint32_t bus_address;
 }
 
 
+
 /// UART
 //
 uint8_t __not_in_flash_func(uart_get_char)(void)
@@ -306,9 +338,12 @@ bool     word_match = false;
    {
      uart_byte = uart_get_char();
 
-     if ((uart_byte == cmd_dump) ||
-         (uart_byte == cmd_dumpall) ||
-         (uart_byte == cmd_getfifo))
+     if ((uart_byte == CMD_DUMP) ||
+         (uart_byte == CMD_DUMPALL) ||
+         (uart_byte == CMD_GETFIFO) ||
+         (uart_byte == CMD_WRITE128K) ||
+         (uart_byte == CMD_READ128K) ||
+         (uart_byte == CMD_BOOT))
      {
         word_match = true;
      }
@@ -316,16 +351,37 @@ bool     word_match = false;
    return(uart_byte);
 }
 
+uint32_t __not_in_flash_func(uart_get_word)(void)
+{
+uint32_t uart_word = 0;
+
+   uart_word = uart_get_char();
+   uart_word |= (uart_get_char() << 8);
+   uart_word |= (uart_get_char() << 16);
+   uart_word |= (uart_get_char() << 24);
+
+   return(uart_word);
+}
+
+void __not_in_flash_func(put_word)(uint32_t offset, uint32_t value)
+{
+   mem_array[offset]   = (value & 0xff);
+   mem_array[offset+1] = ((value>>8) & 0xff);
+   mem_array[offset+2] = ((value>>16) & 0xff);
+   mem_array[offset+3] = ((value>>24) & 0xff);
+}
 
 void __not_in_flash_func(get_cmd_from_uart)(void)
 {
 uint8_t fx_command;
+uint8_t uart_byte;
 char buf[256];
-int i, j, k;
+uint32_t i, j, k;
+uint32_t data_length;
 
     fx_command = uart_get_cmd();
 
-    if (fx_command == cmd_dump) {
+    if (fx_command == CMD_DUMP) {
        for (i = 0; i < 16; i++) {
           sprintf(buf, "%6.6X:", (i*16));
           for (k = 0; k < strlen(buf); k++) {
@@ -345,7 +401,7 @@ int i, j, k;
        
     }
 
-    else if (fx_command == cmd_dumpall) {
+    else if (fx_command == CMD_DUMPALL) {
        for (i = 0; i < 1025; i++) {
           sprintf(buf, "%6.6X:", (i*16));
           for (k = 0; k < strlen(buf); k++) {
@@ -364,7 +420,7 @@ int i, j, k;
        putchar_raw(0x0A);
     }
        
-    else if (fx_command == cmd_getfifo) {
+    else if (fx_command == CMD_GETFIFO) {
        sprintf(buf, "tail = %d, head = %d", from_pcfx_tail, from_pcfx_head);
        out_str(buf);
 
@@ -388,6 +444,33 @@ int i, j, k;
        }
        putchar_raw(0x0D);
        putchar_raw(0x0A);
+    }
+
+    else if (fx_command == CMD_WRITE128K) {
+       for (i = 0; i < 131072; i++) {
+          mem_array[i] = uart_get_char();
+       }
+    }
+
+    else if (fx_command == CMD_READ128K) {
+       for (i = 0; i < 131072; i++) {
+          putchar_raw(mem_array[i]);
+       }
+    }
+
+    else if (fx_command == CMD_BOOT) {
+       data_length = uart_get_word();
+
+       for (i = 0; i < data_length; i++) {
+          mem_array[CODE_BASE_ADDR + i] = uart_get_char();
+       }
+       for (i = 0; i < 16; i++) {
+          mem_array[0x0020 + i] = boot_bmp_20[i];
+       }
+       put_word(0x0030, CODE_BASE_ADDR);
+       put_word(0x0034, FX_EXECUTION_ADDR);
+       put_word(0x0038, data_length);
+       put_word(0x003C, FX_EXECUTION_ADDR);
     }
 }
 
@@ -425,12 +508,12 @@ char buf[100];
     for (i = 0; i < ARRAY_SIZE; i++) {
        mem_array[i] = 0;
     }
-    for (i = 0; i < 32; i++) {
-       mem_array[i] = formatted_bmp_00[i];
-    }
-    for (i = 0; i < 3; i++) {
-       mem_array[0x80 + i] = formatted_bmp_80[i];
-    }
+//    for (i = 0; i < 32; i++) {
+//       mem_array[i] = formatted_bmp_00[i];
+//    }
+//    for (i = 0; i < 3; i++) {
+//       mem_array[0x80 + i] = formatted_bmp_80[i];
+//    }
 
 
 //// UART
@@ -482,9 +565,10 @@ char buf[100];
 
     sleep_ms(500);
 
+// Test code
 //    fake_from_pcfx_string("Hello");
 //    to_pcfx_string("Boo");
-    to_pcfx_add_byte('B');
+//    to_pcfx_add_byte('B');
 
     gotclock = set_sys_clock_khz(240000, 0);
     if (gotclock)
