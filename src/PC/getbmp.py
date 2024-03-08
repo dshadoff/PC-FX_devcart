@@ -32,11 +32,18 @@ ser.open()
 
 f = open(sys.argv[1], 'wb') 
 
-ser.write(b'R')
+# start = time.time()*1000.0
+
+ser.write(b'R')             # one-byte command to receive a whole 128KB save file
 ser.flush()
 
-memory = ser.read(size)
+memory = ser.read(size)     # read a while file
 f.write(memory)
+
+# end = time.time()*1000.0
+# speed = 131072/(end-start)
+# print(end-start, ' milliseconds for 128KB')
+# print(speed, ' KB/s')
 
 f.close()
 
