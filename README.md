@@ -29,12 +29,57 @@ memory, downloading programs and preparing them to be booted from.
 
 ## Theory of Operation
 
+### Signal Timing - Read
+
+Although, at 21MHz, you would expect the PC-FX to have a very fast bus access speed, accesses to
+the FX-BMP port are apparently clocked at half-speed (and are only 8 bits wide).
+
+In general, bus accesses progress through the following steps for a read cycle:
+- Address lines are set up
+- /CE transitions low
+- /OE transitions low
+- The device being queried needs to ready the data, and output it onto the data bus
+- /OE transitions high
+- The device being queried needs to de-assert/tri-state its outputs
+- /CE transitions high
+
+While this is the normal situation, there can also be cases where the /CE line does not return to
+high state before a subsequent address setup and corresponding /OE (or /WE) transition to low.
+
+As our circuit operates at 3.3V, keep in mind that good-quality level-shifters will delay incoming
+signals by roughly 5ns before they appear, and an additional 10ns on the return path, reducing the
+available turnaround time for a read transaction.
+
+Here is a visual of the actual timing of those sequences:
+
+![Prototype Board](images/BMP_cart_read.jpg)
+
+### Signal Timing - Write
+
+In general, bus accesses progress through the following steps for a write cycle:
+- Address lines are set up
+- /CE transitions low
+- /WE transitions low
+- Data appears on the bus, to be written to the addressed device (not before /WE !)
+- /WE transitions high
+- In theory, the written-to device should latch data at this monment, but we can't react that fast, so we will latch earlier
+- /CE transitions high
+
+While this is the normal situation, there can also be cases where the /CE line does not returns to
+high state before a subsequent address setup and corresponding /WE (or /OE) transition to low.
+
+Here is a visual of the actual timing of those sequences:
+
+![Prototype Board](images/BMP_cart_write.jpg)
+
+
 ### GPIO Versus PIO
 
 My original idea was to emply PIOs to manage the bus, but there are delays in crossing
 between CPU and PIO (to access the CPU's memory), which hobbled performance.  However,
 it turned out that the GPIO access functions are also very fast, enabling the RP2040 to
 reach the apparent required speed.
+
 
 ### CPU Overclock
 
