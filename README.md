@@ -52,7 +52,7 @@ available turnaround time for a read transaction.
 
 Here is a visual of the actual timing of those sequences:
 
-![Prototype Board](images/BMP_cart_read.jpg)
+![Read Cycle Timing](images/BMP_cart_read.png)
 
 ### Signal Timing - Write
 
@@ -70,7 +70,7 @@ high state before a subsequent address setup and corresponding /WE (or /OE) tran
 
 Here is a visual of the actual timing of those sequences:
 
-![Prototype Board](images/BMP_cart_write.jpg)
+![Write Cycle Timing](images/BMP_cart_write.png)
 
 
 ### GPIO Versus PIO
