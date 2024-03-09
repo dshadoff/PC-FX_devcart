@@ -35,6 +35,21 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 // #define UART_RX_PIN 1
 
 
+//
+// USB COM port commmand definitions:
+//
+#define  CMD_DUMP      '?'    // dump 256 bytes of hex
+#define  CMD_DUMPALL   '!'    // dump 16384+16 bytes of hex
+#define  CMD_GETFIFO   '/'    // read FIFO
+
+#define  CMD_BOOT      'B'    // Boot program (B is followed by 4 bytes size, then program)
+#define  CMD_WRITE128K 'W'    // write all 128KB of memory (128KB of data follows)
+#define  CMD_READ128K  'R'    // read all 128KB of memory (128KB of data is returned)
+
+
+//
+// hardware-level definitions:
+//
 #define DATA0_PIN      0      // use GPIO 0-7  for data
 #define ADDR0_PIN      8      // use GPIO 8-25 for address
 #define CE_PIN        26      // use GPIO 26 for Chip Enable
@@ -44,9 +59,9 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 
 
 // #define GPIO_TESTSIZE   // use GPIO_FULLSIZE when all GPIOs are available and connected
-#define GPIO_FULLSIZE
-
-#ifdef GPIO_FULLSIZE
+//#define GPIO_FULLSIZE
+//
+//#ifdef GPIO_FULLSIZE
 
 #define ARRAY_SIZE        131072
 #define GPIO_MASK_ADDR    0x03FFFF00 // ultimately, 128KB + port space
@@ -54,15 +69,15 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define GPIO_PORT_DATA    0x00020002
 #define GPIO_PORT_CONTROL 0x00020001
 
-#else                   // else, these are the TESTSIZE variables
-
-#define ARRAY_SIZE        32768
-#define GPIO_MASK_ADDR    0x007FFF00 // currently, 16KB + port space
-#define GPIO_ADDR_THRESH  0x00004000 // currently, port space threshold
-#define GPIO_PORT_DATA    0x00004002
-#define GPIO_PORT_CONTROL 0x00004001
-
-#endif
+//#else                   // else, these are the TESTSIZE variables
+//
+//#define ARRAY_SIZE        32768
+//#define GPIO_MASK_ADDR    0x007FFF00 // currently, 16KB + port space
+//#define GPIO_ADDR_THRESH  0x00004000 // currently, port space threshold
+//#define GPIO_PORT_DATA    0x00004002
+//#define GPIO_PORT_CONTROL 0x00004001
+//
+//#endif
 
 #define GPIO_ADDR_SHIFT   8              // since A0 = GPIO8, this is the shift amount
 
@@ -71,14 +86,19 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define VALUE_INV_ADDR    0xFF           // 'floating' lines. Should be 0xFF, but 0xAA during test.
 
 
+// PC-FX Code Boot particulars:
+//
+#define CODE_BMP_OFFSET      0x0400
+#define FX_EXECUTION_ADDR    0x8000
+
+
 // PC-FX control port flag bits:
 #define  FIFO_CTRL_DO_NOT_WRITE  0x80    // bit 7 = HIGH when queue full (i.e. do not write)
 #define  FIFO_CTRL_DO_NOT_READ   0x40    // bit 6 = HIGH when queue empty (i.e. do not read)
 
-// PC-FX Code Boot particulars:
-//
-#define CODE_BASE_ADDR       0x0400
-#define FX_EXECUTION_ADDR    0x8000
+#define FIFO_SIZE        1024
+#define FIFO_SIZE_MASK   0x3FF
+
 
 
 // Memory array variables:
@@ -88,9 +108,6 @@ volatile uint8_t  mem_array[ARRAY_SIZE];
 
 // FIFO port variables:
 //
-#define FIFO_SIZE        1024
-#define FIFO_SIZE_MASK   0x3FF
-
 volatile uint8_t  fifo_from_pcfx[FIFO_SIZE];
 volatile uint8_t  fifo_to_pcfx[FIFO_SIZE];
 
@@ -140,15 +157,6 @@ uint8_t boot_bmp_20[] = {
         //    Transfer Address (0x8000)
 };
 
-
-
-#define  CMD_DUMP      '?'    // dump 256 bytes of hex
-#define  CMD_DUMPALL   '!'    // dump 16384+16 bytes of hex
-#define  CMD_GETFIFO   '/'    // read FIFO
-
-#define  CMD_BOOT      'B'    // Boot program (B is followed by 4 bytes size, then program)
-#define  CMD_WRITE128K 'W'    // write all 128KB of memory (128KB of data follows)
-#define  CMD_READ128K  'R'    // read all 128KB of memory (128KB of data is returned)
 
 
 
@@ -241,7 +249,6 @@ static void __not_in_flash_func(core1_entry)(void)
 //char buf[32];
 uint8_t indata;
 uint32_t bus_address;
-
 
     while (1)
     {
@@ -378,6 +385,7 @@ uint8_t uart_byte;
 char buf[256];
 uint32_t i, j, k;
 uint32_t data_length;
+uint32_t queue_depth;
 
     fx_command = uart_get_cmd();
 
@@ -421,29 +429,15 @@ uint32_t data_length;
     }
        
     else if (fx_command == CMD_GETFIFO) {
-       sprintf(buf, "tail = %d, head = %d", from_pcfx_tail, from_pcfx_head);
-       out_str(buf);
 
-//       sprintf(buf, "writes to port = %d", writes_to_port);
-//       out_str(buf);
-//       sprintf(buf, "writes not to port = %d", writes_not_to_port);
-//       out_str(buf);
+       queue_depth = ((from_pcfx_head + FIFO_SIZE - from_pcfx_tail) & FIFO_SIZE_MASK);
+       putchar_raw(queue_depth & 0xFF);
+       putchar_raw((queue_depth>>8) & 0xFF);
 
-//       sprintf(buf, "write_addr_index = %d", write_addr_index);
-//       out_str(buf);
-//
-//       if (write_addr_index > 0) {
-//          for (i = 0; i < write_addr_index; i++) {
-//             sprintf(buf, "write_addr[%d] = %8.8X", i, write_addr[i]);
-//             out_str(buf);
-//          }
-//       }
-
-       while (from_pcfx_tail != from_pcfx_head) {
+       while (queue_depth > 0) {
           putchar_raw(from_pcfx_consume_byte());
+          queue_depth--;
        }
-       putchar_raw(0x0D);
-       putchar_raw(0x0A);
     }
 
     else if (fx_command == CMD_WRITE128K) {
@@ -462,12 +456,12 @@ uint32_t data_length;
        data_length = uart_get_word();
 
        for (i = 0; i < data_length; i++) {
-          mem_array[CODE_BASE_ADDR + i] = uart_get_char();
+          mem_array[CODE_BMP_OFFSET + i] = uart_get_char();
        }
        for (i = 0; i < 16; i++) {
           mem_array[0x0020 + i] = boot_bmp_20[i];
        }
-       put_word(0x0030, CODE_BASE_ADDR);
+       put_word(0x0030, CODE_BMP_OFFSET);
        put_word(0x0034, FX_EXECUTION_ADDR);
        put_word(0x0038, data_length);
        put_word(0x003C, FX_EXECUTION_ADDR);
@@ -571,11 +565,11 @@ char buf[100];
 //    to_pcfx_add_byte('B');
 
     gotclock = set_sys_clock_khz(240000, 0);
-    if (gotclock)
-       sprintf(buf, "Got 240MHz clock");
-    else
-       sprintf(buf, "Clock stayed at 125MHz");
-    out_str(buf);
+//    if (gotclock)
+//       sprintf(buf, "Got 240MHz clock");
+//    else
+//       sprintf(buf, "Clock stayed at 125MHz");
+//    out_str(buf);
     
     multicore_launch_core1(core1_entry);
 
