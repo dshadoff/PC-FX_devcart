@@ -18,6 +18,11 @@ The overall board design was based on my earlier PC-FX_nvBMP board using EAGLE.
 The prototype board uses the Olimex RP2040-Pico30 board, because it is an easy-to-use,
 self-contained module which also exposes all 30 of the GPIOs (which most boards don't do).
 
+An optional 3x10 right-angle header can be mounted on the board, for use with a logic state
+analyzer, to monitor the relevant bus signals (to/from the RP2040 module).  Note that there
+is likely and additional 5ns latency between the PC-FX and these signals - both inbound and
+outbound - due to the level-shifters.  Signals are marked in silkscreen on the board.
+
 One major difference from the PC-FX_nvBMP board, is that the 3.3V power is not derived from
 PC-FX's power: The RP2040 module is powered from the USB host, and an on-board 3.3V regulator
 provides the 3.3V rail for the module and the 3.3V side of the level-shifters.  Only the 5V side
