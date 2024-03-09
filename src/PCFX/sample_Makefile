@@ -1,0 +1,9 @@
+# sample makfile line for building the assembler portion of
+# the FIFO-enabled program
+
+ASFLAGS        = -a=$*.lst
+
+
+fifoport.o: fifoport.s
+	v810-as $(ASFLAGS) fifoport.s -o fifoport.o
+
