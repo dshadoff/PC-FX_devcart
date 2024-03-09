@@ -1,0 +1,6 @@
+﻿Qty,Designator,Footprint,Comment,LCSC Part # (optional),Description (optional)
+10,"C1, C2, C3, C4, C5, C6, C7, C8, C9, C11",C0402,100nF 16V,C1525,Samsung CL05B104KO5NNNC 100nF 16V 0402
+2,"C12, C13",C0402,1uF 25V,C52923,Samsung CL05A105KA5NQNC 1uF 25V 0402
+1,R1,R0402,47K,C25741,62.5mW Thick Film Resistors 50V ±100ppm/_ ±1% -55_~+155_ 100kΩ 0402 Chip Resistor - Surface Mount ROHS
+2,"IC3, IC4",TSSOP-48,74LVC16T245DGGR,C148170,"Texas Instruments 74LVC16T245DGGR, Dual, Bus Transceiver, 16-Bit Non-Inverting LVTTL, 1.65  5.5 V, 48-Pin TSSOP"
+2,"IC1, IC2",SOT-23-6,74LVC1G332DBVR,C43368,"Texas Instruments 74LVC1G332DBVR, 3-Input OR Logic Gate, 1.65  5.5 V, 6-Pin SOT-23"
