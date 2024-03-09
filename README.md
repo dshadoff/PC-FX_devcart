@@ -3,6 +3,15 @@
 This is a design of a development cart for the PC-FX, based almost entirely on the
 RP2040 microcontroller.
 
+##  Prototype Board
+
+This is the initial board, using an Olimex RP2040-Pico30 board, and some nylon standoffs
+(5mm on bottom, 7mm on top).  In future, there will a new design for the board which won't
+need a daughterboard, and will have plans for a proper 3D printed case.
+
+![Prototype Board](images/devcart_proto.png)
+
+
 ## Genesis of the Project
 
 The basis of the FX-BMP cartridge is that it consists of 128KB of memory, and the PC-FX can
