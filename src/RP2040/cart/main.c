@@ -42,9 +42,15 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define  CMD_DUMPALL   '!'    // dump 16384+16 bytes of hex
 #define  CMD_GETFIFO   '/'    // read FIFO
 
-#define  CMD_BOOT      'B'    // Boot program (B is followed by 4 bytes size, then program)
-#define  CMD_WRITE128K 'W'    // write all 128KB of memory (128KB of data follows)
-#define  CMD_READ128K  'R'    // read all 128KB of memory (128KB of data is returned)
+#define  CMD_BOOT             'B'    // Boot program (B is followed by 4 bytes size, then program)
+#define  CMD_BOOT_BLOCK_CONT  '1'    // Boot program load a block (add prev length to start; confirm
+                                     // with '1' to indicate continuation)
+                                     // '1' is followed by 4 bytes size, then program
+#define  CMD_BOOT_BLOCK_FINAL '2'    // Boot program load final block (add prev length to start;
+                                     // confirm with '2' to indicate completion)
+                                     // '2' is followed by 4 bytes size, then program
+#define  CMD_WRITE128K        'W'    // write all 128KB of memory (128KB of data follows)
+#define  CMD_READ128K         'R'    // read all 128KB of memory (128KB of data is returned)
 
 
 //
@@ -90,6 +96,15 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 //
 #define CODE_BMP_OFFSET      0x0400
 #define FX_EXECUTION_ADDR    0x8000
+
+#define FX_CONFIRMATION      0x0027      // address to confirm that data write is complete (and/or final)
+#define FX_BOOT_OFFSET       0x0030      // Offset from start of cartridge memory (data to transfer to RAM)
+#define FX_BOOT_LOADADDR     0x0034      // PCFX main memory location to transfer the memory into
+#define FX_BOOT_NUMBYTES     0x0038      // Number of bytes to copy to target memory location
+#define FX_BOOT_EXEC         0x003C      // After load completes, this holds the execution addr
+
+#define FX_WRITE_DONE        '1'         // confirm memory write complete; more to come
+#define FX_WRITE_FINISHED    '2'         // confirm memory write complete; no more to come
 
 
 // PC-FX control port flag bits:
@@ -350,7 +365,9 @@ bool     word_match = false;
          (uart_byte == CMD_GETFIFO) ||
          (uart_byte == CMD_WRITE128K) ||
          (uart_byte == CMD_READ128K) ||
-         (uart_byte == CMD_BOOT))
+         (uart_byte == CMD_BOOT) ||
+         (uart_byte == CMD_BOOT_BLOCK_CONT) ||
+         (uart_byte == CMD_BOOT_BLOCK_FINAL))
      {
         word_match = true;
      }
@@ -370,6 +387,16 @@ uint32_t uart_word = 0;
    return(uart_word);
 }
 
+uint32_t __not_in_flash_func(get_word)(uint32_t offset)
+{
+uint32_t value;
+   value  = mem_array[offset];
+   value |= (mem_array[offset+1] << 8);
+   value |= (mem_array[offset+2] << 16);
+   value |= (mem_array[offset+3] << 24);
+   return(value);
+}
+
 void __not_in_flash_func(put_word)(uint32_t offset, uint32_t value)
 {
    mem_array[offset]   = (value & 0xff);
@@ -385,6 +412,7 @@ uint8_t uart_byte;
 char buf[256];
 uint32_t i, j, k;
 uint32_t data_length;
+uint32_t new_load_addr;
 uint32_t queue_depth;
 
     fx_command = uart_get_cmd();
@@ -461,10 +489,45 @@ uint32_t queue_depth;
        for (i = 0; i < 16; i++) {
           mem_array[0x0020 + i] = boot_bmp_20[i];
        }
-       put_word(0x0030, CODE_BMP_OFFSET);
-       put_word(0x0034, FX_EXECUTION_ADDR);
-       put_word(0x0038, data_length);
-       put_word(0x003C, FX_EXECUTION_ADDR);
+       put_word(FX_BOOT_OFFSET, CODE_BMP_OFFSET);
+       put_word(FX_BOOT_LOADADDR, FX_EXECUTION_ADDR);
+       put_word(FX_BOOT_NUMBYTES, data_length);
+       put_word(FX_BOOT_EXEC, FX_EXECUTION_ADDR);
+       mem_array[FX_CONFIRMATION] = FX_WRITE_DONE;     // message that transfer is complete (but more is coming)
+    }
+
+    else if (fx_command == CMD_BOOT_BLOCK_CONT) {
+       data_length = uart_get_word();
+
+       for (i = 0; i < data_length; i++) {
+          mem_array[CODE_BMP_OFFSET + i] = uart_get_char();
+       }
+       for (i = 0; i < 16; i++) {
+          mem_array[0x0020 + i] = boot_bmp_20[i];
+       }
+       new_load_addr = get_word(FX_BOOT_LOADADDR) + get_word(FX_BOOT_NUMBYTES); // previous FX target addr + length
+       put_word(FX_BOOT_OFFSET, CODE_BMP_OFFSET);
+       put_word(FX_BOOT_LOADADDR, new_load_addr);
+       put_word(FX_BOOT_NUMBYTES, data_length);
+       put_word(FX_BOOT_EXEC, FX_EXECUTION_ADDR);
+       mem_array[FX_CONFIRMATION] = FX_WRITE_DONE;     // message that transfer is complete (but more is coming)
+    }
+
+    else if (fx_command == CMD_BOOT_BLOCK_FINAL) {
+       data_length = uart_get_word();
+
+       for (i = 0; i < data_length; i++) {
+          mem_array[CODE_BMP_OFFSET + i] = uart_get_char();
+       }
+       for (i = 0; i < 16; i++) {
+          mem_array[0x0020 + i] = boot_bmp_20[i];
+       }
+       new_load_addr = get_word(FX_BOOT_LOADADDR) + get_word(FX_BOOT_NUMBYTES); // previous FX target addr + length
+       put_word(FX_BOOT_OFFSET, CODE_BMP_OFFSET);
+       put_word(FX_BOOT_LOADADDR, new_load_addr);
+       put_word(FX_BOOT_NUMBYTES, data_length);
+       put_word(FX_BOOT_EXEC, FX_EXECUTION_ADDR);
+       mem_array[FX_CONFIRMATION] = FX_WRITE_FINISHED;     // message that transfer is complete (and no more will come)
     }
 }
 

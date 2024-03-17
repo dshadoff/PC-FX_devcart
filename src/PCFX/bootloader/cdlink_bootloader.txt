@@ -1,0 +1,7 @@
+binary bootloader
+name bootloader
+maker dshadoff
+makerid n2c
+date 20240315
+country 1
+version 1
