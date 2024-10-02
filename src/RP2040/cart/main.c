@@ -4,12 +4,18 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+//#define TEST_BUILD
+
+
+
 #include <stdio.h>
 #include <string.h>
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "hardware/uart.h"
+#include "hardware/clocks.h"
+#include "hardware/vreg.h"
 
 // These "extern inline" definitions are strong hints to
 // actually inline these functions (which would otherwise
@@ -62,12 +68,18 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define OE_PIN        27      // use GPIO 27 for Output Enable
 #define WE_PIN        28      // use GPIO 28 for Write Enable
 
+#define READ_BITMASK  ((1 << CE_PIN) | (1 << OE_PIN))
+#define WRITE_BITMASK ((1 << CE_PIN) | (1 << WE_PIN))
 
 
-// #define GPIO_TESTSIZE   // use GPIO_FULLSIZE when all GPIOs are available and connected
-//#define GPIO_FULLSIZE
-//
-//#ifdef GPIO_FULLSIZE
+
+#ifdef TEST_BUILD
+#define GPIO_TESTSIZE
+#else
+#define GPIO_FULLSIZE
+#endif
+
+#ifdef GPIO_FULLSIZE
 
 #define ARRAY_SIZE        131072
 #define GPIO_MASK_ADDR    0x03FFFF00 // ultimately, 128KB + port space
@@ -75,15 +87,15 @@ extern inline void gpio_set_dir_masked(uint32_t mask, uint32_t value) __attribut
 #define GPIO_PORT_DATA    0x00020002
 #define GPIO_PORT_CONTROL 0x00020001
 
-//#else                   // else, these are the TESTSIZE variables
-//
-//#define ARRAY_SIZE        32768
-//#define GPIO_MASK_ADDR    0x007FFF00 // currently, 16KB + port space
-//#define GPIO_ADDR_THRESH  0x00004000 // currently, port space threshold
-//#define GPIO_PORT_DATA    0x00004002
-//#define GPIO_PORT_CONTROL 0x00004001
-//
-//#endif
+#else                   // else, these are the TESTSIZE variables
+
+#define ARRAY_SIZE        32768
+#define GPIO_MASK_ADDR    0x007FFF00 // currently, 16KB + port space
+#define GPIO_ADDR_THRESH  0x00004000 // currently, port space threshold
+#define GPIO_PORT_DATA    0x00004002
+#define GPIO_PORT_CONTROL 0x00004001
+
+#endif
 
 #define GPIO_ADDR_SHIFT   8              // since A0 = GPIO8, this is the shift amount
 
@@ -261,72 +273,71 @@ void __not_in_flash_func(out_str)(char * string)
 //
 static void __not_in_flash_func(core1_entry)(void)
 {
-//char buf[32];
 uint8_t indata;
 uint32_t bus_address;
+uint32_t bus;
 
     while (1)
     {
-       while (!gpio_get(CE_PIN))
+       bus = gpio_get_all();
+
+       if ((bus & READ_BITMASK) == 0)   // bus reads from memory
        {
-          if (!gpio_get(OE_PIN))   // bus reads from memory
-          {
-             bus_address = ((gpio_get_all() & GPIO_MASK_ADDR) >> GPIO_ADDR_SHIFT);
+          bus_address = ((bus & GPIO_MASK_ADDR) >> GPIO_ADDR_SHIFT);
 
-             if (bus_address < GPIO_ADDR_THRESH) {
-                gpio_put_masked(GPIO_MASK_DATA, mem_array[bus_address]);
-             }
-             else switch(bus_address)
-             {
-                case GPIO_PORT_DATA:
-                   gpio_put_masked(GPIO_MASK_DATA, dataport);
-                   break;
-
-                case GPIO_PORT_CONTROL:
-                   gpio_put_masked(GPIO_MASK_DATA, control);
-                   break;
-
-                default:
-                   gpio_put_masked(GPIO_MASK_DATA, VALUE_INV_ADDR);
-                   break;
-             }
-             gpio_set_dir_masked(GPIO_MASK_DATA, 0xFF);
-             while (!gpio_get(OE_PIN) );
-             gpio_set_dir_masked(GPIO_MASK_DATA, 0x00);
-
-             if (bus_address == GPIO_PORT_DATA) {
-                indata = to_pcfx_consume_byte();  // throwaway
-             }
+          if (bus_address < GPIO_ADDR_THRESH) {
+             gpio_put_masked(GPIO_MASK_DATA, mem_array[bus_address]);
           }
-
-          if (!gpio_get(WE_PIN))   // bus write to memory
+          else switch(bus_address)
           {
-             bus_address = ((gpio_get_all() & GPIO_MASK_ADDR) >> GPIO_ADDR_SHIFT);
+             case GPIO_PORT_DATA:
+                gpio_put_masked(GPIO_MASK_DATA, dataport);
+                break;
 
-             // Read again, as data is not guaranteed to be correct until
-             // slightly after the /WE pin goes low.
-             //
-             indata = (gpio_get_all() & GPIO_MASK_DATA);
+             case GPIO_PORT_CONTROL:
+                gpio_put_masked(GPIO_MASK_DATA, control);
+                break;
+
+             default:
+                gpio_put_masked(GPIO_MASK_DATA, VALUE_INV_ADDR);
+                break;
+          }
+          gpio_set_dir_masked(GPIO_MASK_DATA, 0xFF);
+          while (!gpio_get(OE_PIN) );
+          gpio_set_dir_masked(GPIO_MASK_DATA, 0x00);
+
+          if (bus_address == GPIO_PORT_DATA) {
+             indata = to_pcfx_consume_byte();  // throwaway
+          }
+       }
+
+       if ((bus & WRITE_BITMASK) == 0)   // bus writes to memory
+       {
+          bus_address = ((bus & GPIO_MASK_ADDR) >> GPIO_ADDR_SHIFT);
+
+          // Read again, as data is not guaranteed to be correct until
+          // slightly after the /WE pin goes low.
+          //
+          indata = (gpio_get_all() & GPIO_MASK_DATA);
 
 // debug logging
-//             write_addr[write_addr_index] = bus_address;
-//             write_addr_index = write_addr_index + 1;
+//          write_addr[write_addr_index] = bus_address;
+//          write_addr_index = write_addr_index + 1;
 
-             if (bus_address < GPIO_ADDR_THRESH) {
-                mem_array[bus_address] = indata;
-             }
-             else switch(bus_address) {
-                case GPIO_PORT_DATA:
-                   from_pcfx_add_byte(indata);
-//                   writes_to_port++;
-                   break;
-
-                default:
-//                   writes_not_to_port++;
-                   break;
-             }
-             while (!gpio_get(WE_PIN) );
+          if (bus_address < GPIO_ADDR_THRESH) {
+             mem_array[bus_address] = indata;
           }
+          else switch(bus_address) {
+             case GPIO_PORT_DATA:
+                from_pcfx_add_byte(indata);
+//                writes_to_port++;
+                break;
+
+             default:
+//                writes_not_to_port++;
+                break;
+          }
+          while (!gpio_get(WE_PIN) );
        }
 //sprintf(buf, "addr %6.6X", bus_address);
 //out_str(buf);
@@ -458,6 +469,15 @@ uint32_t queue_depth;
        
     else if (fx_command == CMD_GETFIFO) {
 
+#ifdef TEST_BUILD
+       sprintf(buf, "tail = %d, head = %d", from_pcfx_tail, from_pcfx_head);
+       for (k = 0; k < strlen(buf); k++) {
+          putchar_raw(buf[k]);
+       }
+       putchar_raw(0x0D);
+       putchar_raw(0x0A);
+#endif
+
        queue_depth = ((from_pcfx_head + FIFO_SIZE - from_pcfx_tail) & FIFO_SIZE_MASK);
        putchar_raw(queue_depth & 0xFF);
        putchar_raw((queue_depth>>8) & 0xFF);
@@ -469,13 +489,13 @@ uint32_t queue_depth;
     }
 
     else if (fx_command == CMD_WRITE128K) {
-       for (i = 0; i < 131072; i++) {
+       for (i = 0; i < ARRAY_SIZE; i++) {
           mem_array[i] = uart_get_char();
        }
     }
 
     else if (fx_command == CMD_READ128K) {
-       for (i = 0; i < 131072; i++) {
+       for (i = 0; i < ARRAY_SIZE; i++) {
           putchar_raw(mem_array[i]);
        }
     }
@@ -565,12 +585,15 @@ char buf[100];
     for (i = 0; i < ARRAY_SIZE; i++) {
        mem_array[i] = 0;
     }
-//    for (i = 0; i < 32; i++) {
-//       mem_array[i] = formatted_bmp_00[i];
-//    }
-//    for (i = 0; i < 3; i++) {
-//       mem_array[0x80 + i] = formatted_bmp_80[i];
-//    }
+
+#ifdef TEST_BUILD
+    for (i = 0; i < 32; i++) {
+       mem_array[i] = formatted_bmp_00[i];
+    }
+    for (i = 0; i < 3; i++) {
+       mem_array[0x80 + i] = formatted_bmp_80[i];
+    }
+#endif
 
 
 //// UART
@@ -623,16 +646,28 @@ char buf[100];
     sleep_ms(500);
 
 // Test code
-//    fake_from_pcfx_string("Hello");
-//    to_pcfx_string("Boo");
-//    to_pcfx_add_byte('B');
+#ifdef TEST_BUILD
+    fake_from_pcfx_string("Hello");
+    to_pcfx_string("Boo");
+    to_pcfx_add_byte('B');
+#endif
 
+#ifdef TEST_BUILD
+    sprintf(buf, "Array size = %d", ARRAY_SIZE);
+    out_str(buf);
+#endif
+
+//TODO
+//    vreg_set_voltage(VREG_VOLTAGE_1_25);
     gotclock = set_sys_clock_khz(240000, 0);
-//    if (gotclock)
-//       sprintf(buf, "Got 240MHz clock");
-//    else
-//       sprintf(buf, "Clock stayed at 125MHz");
-//    out_str(buf);
+
+#ifdef TEST_BUILD
+    if (gotclock)
+       sprintf(buf, "Got 240MHz clock");
+    else
+       sprintf(buf, "Clock stayed at 125MHz");
+    out_str(buf);
+#endif
     
     multicore_launch_core1(core1_entry);
 

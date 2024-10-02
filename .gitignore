@@ -3,3 +3,5 @@
 *.orig
 *.swp
 *.o
+src/RP2040/test_device/cmake*/*
+src/RP2040/cart/cmake*/*

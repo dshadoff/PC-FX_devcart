@@ -13,7 +13,6 @@ add_executable(fxdevcart main.c)
 target_link_libraries(fxdevcart 
 	pico_stdlib
 	pico_multicore
-# 	hardware_pio
 	)
 
 # enable usb output, disable uart output
