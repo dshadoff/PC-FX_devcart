@@ -347,7 +347,7 @@ void write_to_queue(uint8_t * string)
 int i;
 
    for (i = 0; i < strlen(string); i++) {
-      write_mem(0x4000, *(string+i));
+      write_mem(0x4002, *(string+i));
       sleep_us(1);
    }
 }
@@ -405,20 +405,20 @@ uint8_t junk;
 
    sleep_us(15);
 
-   out_str("Read 0x4000");
-   data = read_mem(0x4000);
-   out_hex(data);
-
-   sleep_us(15);
-
-   out_str("Read 0x4010");
-   data = read_mem(0x4010);
+   out_str("Read 0x4002");
+   data = read_mem(0x4002);
    out_hex(data);
 
    sleep_us(15);
 
    out_str("Read 0x4001");
    data = read_mem(0x4001);
+   out_hex(data);
+
+   sleep_us(15);
+
+   out_str("Read 0x4010");
+   data = read_mem(0x4010);
    out_hex(data);
 
    sleep_us(15);
