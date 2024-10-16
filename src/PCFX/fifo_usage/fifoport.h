@@ -17,3 +17,6 @@ extern u8 read_fifo_data(void);
 extern void write_fifo_data(u8 databyte);
 extern u8 read_fxbmpmem_offset(u32 address);
 
+extern u8 get_devcart_ver_major(void);
+extern u8 get_devcart_ver_minor(void);
+
