@@ -10,15 +10,15 @@
 // -----------------------------------------------------
 //
 //------------------------------------------------------------------------------------------
-// Board definition for the Olimex rp2040-pico30
+// Board definition for the Olimex_rp2040_pico30
 //
-// This header may be included by other board headers as "boards/olimx_rp2040-pico30.h"
+// This header may be included by other board headers as "boards/olimex_rp2040_pico30.h"
 
-#ifndef _BOARDS_OLIMEX_RP2040-PICO30_H
-#define _BOARDS_OLIMEX_RP2040-PICO30_H
+#ifndef _BOARDS_OLIMEX_RP2040_PICO30_H
+#define _BOARDS_OLIMEX_RP2040_PICO30_H
 
 // For board detection
-#define OLIMEX_RP2040-PICO30
+#define OLIMEX_RP2040_PICO30
 
 // --- UART ---
 #ifndef PICO_DEFAULT_UART
