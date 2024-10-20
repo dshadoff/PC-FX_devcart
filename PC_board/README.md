@@ -2,38 +2,47 @@
 
 This is the PC board design of a development cart for the PC-FX, based on the RP2040 microcontroller.
 
-##  Prototype Board
+##  Current version
 
-This is the initial board, using an Olimex RP2040-Pico30 board, and some nylon standoffs
-(5mm on bottom, 7mm on top).  In future, there will a new design for the board which won't
-need a daughterboard, and will have plans for a proper 3D printed case.
+The current version is Ver2_RevB.
+[(For the Protoype board using an Olimex RP2040-Pico30 module, please click here.)](README_protoype.md)
 
-![Prototype Board](../images/devcart_proto.jpg)
+The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update ont eh PC Board itself,
+so the picture of RevA is included here.
+
+![Current version](../images/devcart_ver2_reva.jpg)
 
 
 ## Overview
 
-The overall board design was based on my earlier PC-FX_nvBMP board using EAGLE.
+The board design was a ground-up design for 4-layer board using KiCAD 8.0.4 .
 
-The prototype board uses the Olimex RP2040-Pico30 board, because it is an easy-to-use,
-self-contained module which also exposes all 30 of the GPIOs (which most boards don't do).
+As this was my first KiCAD design of a reasonable complexity, I was happy to receive some guidance
+and schematic updates from [Regis Galland](https://github.com/rgalland).
 
-An optional 3x10 right-angle header can be mounted on the board, for use with a logic state
-analyzer, to monitor the relevant bus signals (to/from the RP2040 module).  Note that there
-is likely and additional 5ns latency between the PC-FX and these signals - both inbound and
-outbound - due to the level-shifters.  Signals are marked in silkscreen on the board.
+The board is based around a RP2040 microcontroller, and its "minimal design", as shown in the Raspberry Pi
+[Hardware Design With RP2040 Design Guide](https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf).
 
-One major difference from the PC-FX_nvBMP board, is that the 3.3V power is not derived from
-PC-FX's power: The RP2040 module is powered from the USB host, and an on-board 3.3V regulator
-provides the 3.3V rail for the module and the 3.3V side of the level-shifters.  Only the 5V side
-of the level-shifters is supplied by the PC-FX (however, they share a common ground).
+The bus decoding was based on my earlier work with the [PC-FX_nvBMP board](https://github.com/pcfx-devel/PC-FX-NVBMP).
+
+The 3.3V power is not derived from PC-FX's power: The RP2040 is powered from the USB host, and an on-board
+3.3V regulator provides the 3.3V rail for the module and the 3.3V side of the level-shifters.
+
+Only the 5V side of the level-shifters is supplied by the PC-FX (however, they share a common ground).
+
+This means that:
+ 1) The FX-devcart board will not function correctly when not connected to USB, as this is the main power source.
+ 2) The FX-devcart can be programmed while inserted into the PC-FX, while the PC-FX is not turned on - this is
+important for the ability to "boot" code from teh FX-devcart
+
 
 ## Files
 
-EAGLE was used for the prototype board, and all design files are included.
+KiCAD was used for designing the board, and all design files are included.
+(FX-Dev_Ver2_revB.zip is a KiCAD Project archive, including all relevant footprints and datasheets).
 
-Gerber files are supplied in the relevant 'xxx_gerbers.zip' file.
-
-If you would like to use JLCPCB's SMT Assembly service, a 'BOM.csv' (BOM/bill-of-materials)
-file and 'assembly.csv' (CPL/component positioning and layout) files are also included.
+In order to manufacture the board, the key files are in the "production" subfolder:
+ - Gerber files are supplied in the relevant 'Gerbersi_xxx.zip' file.
+ - bom.csv is the bill-of-materials file, prepared in the format for JLCPCB's assembly service
+ - positions.csv is the pick-and-place part positioning file, prepared in the format for JLCPCB's assembly service
 

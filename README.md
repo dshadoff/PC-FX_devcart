@@ -3,11 +3,15 @@
 This is a design of a development cart for the PC-FX, based almost entirely on the
 RP2040 microcontroller.
 
-##  Prototype Board
+##  Current Board Revision
 
-This is the initial board, using an Olimex RP2040-Pico30 board, and some nylon standoffs
-(5mm on bottom, 7mm on top).  In future, there will a new design for the board which won't
-need a daughterboard, and will have plans for a proper 3D printed case.
+The current version is Ver2_RevB.
+[(For the Protoype board using an Olimex RP2040-Pico30 module, please click here.)](README_protoype.md)
+
+The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update ont eh PC Board itself,
+so the picture of RevA is included here.
+
+In future, there will be plans for a proper 3D printed case.
 
 ![Prototype Board](images/devcart_proto.jpg)
 
@@ -19,7 +23,8 @@ actually boot from the cartrdige memory under the right circumstances.
 
 The FX-BMP memory doesn't need to be very fast - the bus access speed is cut in half when
 accessing the FX-BMP range of memory. Assuming that the CPU reads the data at the rising
-edge of /OE, this can be as slow as 174ns after /OE.
+edge of /OE, this can be as slow as 174ns after /OE. (My design targets have been to keep this
+turnaround time below 150ns).
 
 The RP2040 has two CPU cores, and very fast GPIO access. It seemed possible to emply one
 CPU core to deal with external access to the memory - emulating a SRAM bus interface - and
@@ -31,7 +36,7 @@ memory, downloading programs and preparing them to be booted from.
 
 ### Signal Timing - Read
 
-Although, at 21MHz, you would expect the PC-FX to have a very fast bus access speed, accesses to
+At 21MHz, you would expect the PC-FX to have a very fast bus access speed, however accesses to
 the FX-BMP port are apparently clocked at half-speed (and are only 8 bits wide).
 
 In general, bus accesses progress through the following steps for a read cycle:
