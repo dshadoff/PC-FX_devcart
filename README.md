@@ -6,12 +6,12 @@ RP2040 microcontroller.
 ##  Current Board Revision
 
 The current version is Ver2_RevB.
-[(For the Protoype board using an Olimex RP2040-Pico30 module, please click here.)](README_protoype.md)
+[(For the Protoype board using an Olimex RP2040-Pico30 module, please click here.)](PC_Board/README_protoype.md)
 
-The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update ont eh PC Board itself,
+The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update onthe PC Board itself,
 so the picture of RevA is included here.
 
-In future, there will be plans for a proper 3D printed case.
+In future, there are plans for a proper 3D printed case.
 
 ![Prototype Board](images/devcart_ver2_reva.jpg)
 
@@ -90,10 +90,10 @@ reach the apparent required speed.
 
 In order the reach the required speeds, the CPU is overclocked to 240MHz (the default
 CPU clock speed is only 125MHz, and it is only certified to 133MHz). This might at first
-sound a bit scary and possibly dangerous, but there are many cases of pico-examples out
-in the wild (and used commonly) which are clocked over 250MHz, with many people finding
-it to work in the 400MHz range (of cource, USB and Flash access break down somewhere between
-250MHz and 400MHz).
+sound a bit scary and possibly dangerous, but there are many cases of RP2040 examples out
+in the wild and used commonly which are clocked over 250MHz (including dricing VGA and
+DVI/HDMI signals), with many people finding it to work in the 400MHz range (of course,
+USB and Flash access break down somewhere between 250MHz and 400MHz).
 
 ### GPIOs in USE
 
