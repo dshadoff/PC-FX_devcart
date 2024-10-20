@@ -13,13 +13,13 @@ so the picture of RevA is included here.
 
 In future, there will be plans for a proper 3D printed case.
 
-![Prototype Board](images/devcart_proto.jpg)
+![Prototype Board](images/devcart_ver2_reva.jpg)
 
 
 ## Genesis of the Project
 
 The basis of the FX-BMP cartridge is that it consists of 128KB of memory, and the PC-FX can
-actually boot from the cartrdige memory under the right circumstances.
+actually boot from the cartridge memory under the right circumstances.
 
 The FX-BMP memory doesn't need to be very fast - the bus access speed is cut in half when
 accessing the FX-BMP range of memory. Assuming that the CPU reads the data at the rising
