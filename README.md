@@ -8,8 +8,8 @@ RP2040 microcontroller.
 The current version is Ver2_RevB.
 [(For the Protoype board using an Olimex RP2040-Pico30 module, please click here.)](PC_board/README_prototype.md)
 
-The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update onthe PC Board itself,
-so the picture of RevA is included here.
+The only changes from RevA to Rev B are related to schematic annotations, and a minor labelling update on the PC
+Board itself, so the picture of RevA is included here.
 
 In future, there are plans for a proper 3D printed case.
 
