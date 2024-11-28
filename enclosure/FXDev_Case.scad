@@ -37,11 +37,11 @@ overshoot = 0.1;
 
 //support cylinders
 cyl_outer_rad = (4.0/2);  // 4.0 mm (support hole in PC board is actually 4.4mm
-cyl_inner_rad = (2.2/2);  // 2.0 mm (for ?? screw shaft)
+cyl_inner_rad = (2.3/2);  // 2.0 mm (for ?? screw shaft)
 screwhead_depth = 2.0;
-screwhead_rad = (3.6/2);
+screwhead_rad = (3.7/2);
 nuthead_depth = 1.5;
-nuthead_rad = (4.6/2);
+nuthead_rad = (4.7/2);
 
 // relative to board
 bottom_z = 11.3654;
